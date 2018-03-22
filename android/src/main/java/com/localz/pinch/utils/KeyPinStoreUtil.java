@@ -39,7 +39,7 @@ public class KeyPinStoreUtil {
         keyStore.load(null, null);
 
         for (String filename : filenames) {
-            InputStream caInput = new BufferedInputStream(this.getClass().getClassLoader().getResourceAsStream("assets/" + filename + ".cer"));
+            InputStream caInput = new BufferedInputStream(this.getClass().getClassLoader().getResourceAsStream("assets/" + filename + ".der"));
             Certificate ca;
             try {
                 ca = cf.generateCertificate(caInput);
