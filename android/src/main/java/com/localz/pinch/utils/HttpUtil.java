@@ -3,7 +3,6 @@ package com.localz.pinch.utils;
 import android.util.Log;
 
 import com.facebook.react.bridge.Arguments;
-import com.facebook.react.bridge.ReadableMapKeySetIterator;
 import com.facebook.react.bridge.WritableMap;
 
 import com.localz.pinch.models.HttpRequest;
@@ -17,6 +16,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
@@ -44,7 +46,7 @@ public class HttpUtil {
         return sb.toString();
     }
 
-    private WritableMap getResponseHeaders(HttpsURLConnection connection) {
+    private WritableMap getResponseHeaders(HttpURLConnection connection) {
         WritableMap jsonHeaders = Arguments.createMap();
         Map<String, List<String>> headerMap = connection.getHeaderFields();
 
@@ -57,7 +59,7 @@ public class HttpUtil {
         return jsonHeaders;
     }
 
-    private HttpsURLConnection prepareRequestHeaders(HttpsURLConnection connection, JSONObject headers) throws JSONException {
+    private HttpURLConnection prepareRequestHeaders(HttpURLConnection connection, JSONObject headers) throws JSONException {
         connection.setRequestProperty("Content-Type", DEFAULT_CONTENT_TYPE);
         connection.setRequestProperty("Accept", DEFAULT_CONTENT_TYPE);
 
@@ -72,16 +74,22 @@ public class HttpUtil {
         return connection;
     }
 
-    private HttpsURLConnection prepareRequest(HttpRequest request)
+    private HttpURLConnection prepareRequest(HttpRequest request)
             throws IOException, KeyStoreException, CertificateException, KeyManagementException, NoSuchAlgorithmException, JSONException {
-        HttpsURLConnection connection;
+        HttpURLConnection connection;
         URL url = new URL(request.endpoint);
         String method = request.method.toUpperCase();
 
-        connection = (HttpsURLConnection) url.openConnection();
-        if (request.certFilenames != null) {
-            connection.setSSLSocketFactory(KeyPinStoreUtil.getInstance(request.certFilenames).getContext().getSocketFactory());
+        if (request.endpoint.startsWith("https")) {
+            HttpsURLConnection httpsConnection = (HttpsURLConnection) url.openConnection();
+            if (request.certFilenames != null) {
+                httpsConnection.setSSLSocketFactory(KeyPinStoreUtil.getInstance(request.certFilenames).getContext().getSocketFactory());
+            }
+            connection = httpsConnection;
+        } else {
+            connection = (HttpURLConnection) url.openConnection();
         }
+
         connection.setRequestMethod(method);
 
         connection = prepareRequestHeaders(connection, request.headers);
@@ -107,7 +115,7 @@ public class HttpUtil {
         return connection;
     }
 
-    private InputStream prepareResponseStream(HttpsURLConnection connection) throws IOException {
+    private InputStream prepareResponseStream(HttpURLConnection connection) throws IOException {
         try {
             return connection.getInputStream();
         } catch (IOException e) {
@@ -119,7 +127,7 @@ public class HttpUtil {
             throws IOException, KeyStoreException, CertificateException, KeyManagementException, NoSuchAlgorithmException, JSONException {
         InputStream responseStream = null;
         HttpResponse response = new HttpResponse();
-        HttpsURLConnection connection;
+        HttpURLConnection connection;
         int status;
         String statusText;
 
